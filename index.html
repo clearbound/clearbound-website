@@ -671,7 +671,7 @@ a:hover { color: var(--accent-dark); }
 <div class="start-copy">
 <p class="eyebrow on-dark">Start here</p>
 <h2>What's falling through the cracks?</h2>
-<p class="lede">Tell us what's eating your time or costing you leads. You'll get a text back within minutes and can grab a 20-minute strategy call. No pitch deck, just a straight answer on what we'd build and what it would cost.</p>
+<p class="lede">Tell us what's eating your time or costing you leads. I'll personally follow up within 1 business day. No pitch deck, just a straight answer on what we'd build and what it would cost.</p>
 <div class="start-contact">
 <a href="tel:+16029996990">(602) 999-6990</a>
 <a href="mailto:john@clearbounddigital.com">john@clearbounddigital.com</a>
@@ -711,18 +711,20 @@ a:hover { color: var(--accent-dark); }
 <label for="f-msg">What's falling through the cracks?</label>
 <textarea id="f-msg" name="message" rows="4"></textarea>
 </div>
-<p class="form-error" id="form-error" style="margin-top: 12px;">Please fill in your name, mobile number and a valid email.</p>
+<p class="form-error" id="form-error" style="margin-top: 12px;">Please fill in your name, phone and a valid email.</p>
 <button type="submit" class="btn btn-primary" id="lead-submit" style="margin-top: 20px;">Send it and book a call</button>
-<label class="consent" style="margin-top: 16px; display: flex; gap: 8px; align-items: flex-start;">
-<input type="checkbox" id="f-consent" name="smsConsent" style="margin-top: 3px; height: auto;" checked>
-<span>By submitting you agree to receive texts about your inquiry. Reply STOP anytime.</span>
-</label>
+<p class="consent" style="margin-top: 16px;">We'll only use this to follow up about your project. No spam, ever.</p>
+<div style="position: absolute; left: -9999px; top: -9999px; height: 0; width: 0; overflow: hidden;" aria-hidden="true">
+<label for="f-website">Leave this field blank</label>
+<input type="text" id="f-website" name="website" tabindex="-1" autocomplete="off">
+</div>
+<input type="hidden" id="f-ts" name="formRenderedAt">
 </div>
 
 <div class="form-success" id="form-success">
 <div class="check">&#10003;</div>
 <h3>Got it.</h3>
-<p>We'll text and email you shortly. Want to talk sooner? Call (602) 999-6990.</p>
+<p>Thanks — I'll personally follow up within 1 business day. Want to talk sooner? Call (602) 999-6990.</p>
 </div>
 </form>
 </div>
@@ -767,25 +769,42 @@ a:hover { color: var(--accent-dark); }
 })();
 
 (function () {
+  var tsField = document.getElementById('f-ts');
+  if (tsField) tsField.value = String(Date.now());
+})();
+
+(function () {
   var form = document.getElementById('lead-form');
   var fields = document.getElementById('lead-form-fields');
   var success = document.getElementById('form-success');
   var errorEl = document.getElementById('form-error');
   var submitBtn = document.getElementById('lead-submit');
+  var defaultError = 'Please fill in your name, phone and a valid email.';
+
+  function getUtmParams() {
+    var params = new URLSearchParams(window.location.search);
+    var utm = {};
+    params.forEach(function (value, key) {
+      if (/^utm_/.test(key) && value) utm[key] = value;
+    });
+    return Object.keys(utm).length ? utm : undefined;
+  }
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
 
     var name = document.getElementById('f-name').value.trim();
-    var business = document.getElementById('f-biz').value.trim();
-    var mobile = document.getElementById('f-phone').value.trim();
+    var company = document.getElementById('f-biz').value.trim();
+    var phone = document.getElementById('f-phone').value.trim();
     var email = document.getElementById('f-email').value.trim();
     var need = document.getElementById('f-type').value;
     var message = document.getElementById('f-msg').value.trim();
-    var smsConsent = document.getElementById('f-consent').checked;
+    var website = document.getElementById('f-website').value;
+    var formRenderedAt = Number(document.getElementById('f-ts').value);
     var emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-    if (!name || !mobile || !emailOk) {
+    if (!name || !phone || !emailOk) {
+      errorEl.textContent = defaultError;
       errorEl.classList.add('show');
       return;
     }
@@ -797,15 +816,28 @@ a:hover { color: var(--accent-dark); }
     fetch('/api/lead', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, business: business, mobile: mobile, email: email, need: need, message: message, smsConsent: smsConsent })
+      body: JSON.stringify({
+        name: name,
+        company: company,
+        phone: phone,
+        email: email,
+        need: need,
+        message: message,
+        website: website,
+        formRenderedAt: formRenderedAt,
+        sourcePage: window.location.pathname,
+        utm: getUtmParams()
+      })
     })
       .then(function (res) {
-        if (!res.ok) throw new Error('Request failed');
-        fields.style.display = 'none';
-        success.classList.add('show');
+        return res.json().catch(function () { return {}; }).then(function (data) {
+          if (!res.ok || !data.ok) throw new Error((data && data.error) || 'Request failed');
+          fields.style.display = 'none';
+          success.classList.add('show');
+        });
       })
-      .catch(function () {
-        errorEl.textContent = 'Something went wrong sending that. Please call (602) 999-6990 or email john@clearbounddigital.com.';
+      .catch(function (err) {
+        errorEl.textContent = (err && err.message) || defaultError;
         errorEl.classList.add('show');
         submitBtn.disabled = false;
         submitBtn.textContent = 'Send it and book a call';
