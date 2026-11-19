@@ -42,9 +42,9 @@ async function sendLeadAlertEmail(lead) {
     ['Name', lead.name],
     ['Email', lead.email],
     ['Phone', lead.phone],
-    ['Company', lead.company || '—'],
-    ['Source page', lead.source_page || '—'],
-    ['UTM', lead.utm ? JSON.stringify(lead.utm) : '—'],
+    ['Company', lead.company || 'N/A'],
+    ['Source page', lead.source_page || 'N/A'],
+    ['UTM', lead.utm ? JSON.stringify(lead.utm) : 'N/A'],
   ];
 
   const html = `
@@ -53,9 +53,9 @@ async function sendLeadAlertEmail(lead) {
       ${rows.map(([k, v]) => `<tr><td><strong>${escapeHtml(k)}</strong></td><td>${escapeHtml(v)}</td></tr>`).join('')}
     </table>
     <p><strong>Message</strong></p>
-    <p>${escapeHtml(lead.message || '—').replace(/\n/g, '<br>')}</p>
+    <p>${escapeHtml(lead.message || 'N/A').replace(/\n/g, '<br>')}</p>
   `;
-  const text = rows.map(([k, v]) => `${k}: ${v}`).join('\n') + `\n\nMessage:\n${lead.message || '—'}`;
+  const text = rows.map(([k, v]) => `${k}: ${v}`).join('\n') + `\n\nMessage:\n${lead.message || 'N/A'}`;
 
   return sendResendEmail({
     from,
@@ -92,7 +92,7 @@ async function sendLeadAutoReply(lead) {
   return sendResendEmail({
     from: `Clearbound Digital <${from}>`,
     to: lead.email,
-    subject: "Got your message — I'll be in touch soon",
+    subject: "Got your message, I'll be in touch soon",
     html,
     text,
   });
